@@ -156,13 +156,13 @@ j_init (void)
 		goto error;
 	}
 
-	object_backend = j_configuration_get_object_backend(common->configuration);
-	object_component = j_configuration_get_object_component(common->configuration);
-	object_path = j_configuration_get_object_path(common->configuration);
+	object_backend = j_configuration_get_object_backend(common->configuration, 0);
+	object_component = j_configuration_get_object_component(common->configuration, 0);
+	object_path = j_configuration_get_object_path(common->configuration, 0);
 
-	kv_backend = j_configuration_get_kv_backend(common->configuration);
-	kv_component = j_configuration_get_kv_component(common->configuration);
-	kv_path = j_configuration_get_kv_path(common->configuration);
+	kv_backend = j_configuration_get_kv_backend(common->configuration, 0);
+	kv_component = j_configuration_get_kv_component(common->configuration, 0);
+	kv_path = j_configuration_get_kv_path(common->configuration, 0);
 
 	db_backend = j_configuration_get_db_backend(common->configuration);
 	db_component = j_configuration_get_db_component(common->configuration);
