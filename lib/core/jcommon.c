@@ -26,6 +26,8 @@
 
 #include <jcommon.h>
 
+
+#include <core/jhelper.h>
 #include <jbackend.h>
 #include <jbackground-operation-internal.h>
 #include <jconfiguration.h>
@@ -137,20 +139,17 @@ j_init_intern (enum Component component, gint opt_port)
 	g_autofree gchar* basename = NULL;
 	gchar const* object_backend;
 	gchar const* object_component;
-	gchar const* object_path;
+	g_autofree gchar* object_path = NULL;
 	gchar const* kv_backend;
 	gchar const* kv_component;
-	gchar const* kv_path;
+	g_autofree gchar* kv_path = NULL;
 	gchar const* db_backend;
 	gchar const* db_component;
-	gchar const* db_path;
+	g_autofree gchar* db_path = NULL;
+	g_autofree gchar* port_str = NULL;
 
-	if (j_is_initialized())
 	gboolean success_load_backend;
-#ifdef JULEA_DEBUG
-	g_autofree gchar* kv_path_port = NULL;
-	g_autofree gchar* object_path_port = NULL;
-#endif
+
 	// Server should be able to reinitilaize as Client
 	// initlizatiosn is called on libray load.
 	if (j_is_initialized() && component == Client)
@@ -183,10 +182,13 @@ j_init_intern (enum Component component, gint opt_port)
 		goto error;
 	}
 
+	port_str = g_strdup_printf("%d", opt_port);
+
 
 	db_backend = j_configuration_get_db_backend(common->configuration);
 	db_component = j_configuration_get_db_component(common->configuration);
-	db_path = j_configuration_get_db_path(common->configuration);
+	//db_path = j_configuration_get_db_path(common->configuration);
+	db_path = j_helper_str_replace(j_configuration_get_db_path(common->configuration), "{PORT}", port_str);
 
 
 	if(component == Server)
@@ -216,16 +218,8 @@ j_init_intern (enum Component component, gint opt_port)
 	{
 		object_backend = j_configuration_get_object_backend(common->configuration, tier);
 		object_component = j_configuration_get_object_component(common->configuration, tier);
-		object_path = j_configuration_get_object_path(common->configuration, tier);
+		object_path  = j_helper_str_replace(j_configuration_get_object_path(common->configuration, 0), "{PORT}", port_str);
 
-		if(component == Server)
-		{
-#ifdef JULEA_DEBUG
-			// Hack to launch multiple server on differnt ports on the same host
-			object_path_port = g_strdup_printf("%s/%d", object_path, opt_port);
-			object_path = object_path_port;
-#endif
-		}
 
 		if(component == Server)
 		{
@@ -250,16 +244,8 @@ j_init_intern (enum Component component, gint opt_port)
 	{
 		kv_backend = j_configuration_get_kv_backend(common->configuration, tier);
 		kv_component = j_configuration_get_kv_component(common->configuration, tier);
-		kv_path = j_configuration_get_kv_path(common->configuration, tier);
+		kv_path = j_helper_str_replace(j_configuration_get_kv_path(common->configuration, 0), "{PORT}", port_str);
 
-		if(component == Server)
-		{
-#ifdef JULEA_DEBUG
-			// Hack to launch multiple server on differnt ports on the same host
-			kv_path_port = g_strdup_printf("%s/%d", kv_path, opt_port);
-			kv_path = kv_path_port;
-#endif
-		}
 
 		if(component == Server)
 		{
