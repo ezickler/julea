@@ -78,6 +78,11 @@ test_configuration_get (void)
 	gchar const* kv_servers[] = { "localhost", NULL };
 	gchar const* db_servers[] = { "localhost", "host.local", NULL };
 
+
+	gchar const* kv_backends[] = { "null2", "null3", NULL };
+	gchar const* kv_components[] = { "client", "server", NULL };
+	gchar const* kv_paths[] = { "NULL2", "NULL3", NULL };
+
 	key_file = g_key_file_new();
 	g_key_file_set_string_list(key_file, "servers", "object", object_servers, 2);
 	g_key_file_set_string_list(key_file, "servers", "kv", kv_servers, 1);
@@ -85,12 +90,12 @@ test_configuration_get (void)
 	g_key_file_set_string(key_file, "object", "backend", "null");
 	g_key_file_set_string(key_file, "object", "component", "server");
 	g_key_file_set_string(key_file, "object", "path", "NULL");
-	g_key_file_set_string(key_file, "kv", "backend", "null2");
-	g_key_file_set_string(key_file, "kv", "component", "client");
-	g_key_file_set_string(key_file, "kv", "path", "NULL2");
-	g_key_file_set_string(key_file, "db", "backend", "null3");
+	g_key_file_set_string_list(key_file, "kv", "backend", kv_backends,2);
+	g_key_file_set_string_list(key_file, "kv", "component", kv_components, 2);
+	g_key_file_set_string_list(key_file, "kv", "path", kv_paths, 2);
+	g_key_file_set_string(key_file, "db", "backend", "null4");
 	g_key_file_set_string(key_file, "db", "component", "client");
-	g_key_file_set_string(key_file, "db", "path", "NULL3");
+	g_key_file_set_string(key_file, "db", "path", "NULL4");
 
 	configuration = j_configuration_new_for_data(key_file);
 	g_assert(configuration != NULL);
@@ -106,17 +111,24 @@ test_configuration_get (void)
 	g_assert_cmpstr(j_configuration_get_db_server(configuration, 1), ==, "host.local");
 	g_assert_cmpuint(j_configuration_get_db_server_count(configuration), ==, 2);
 
-	g_assert_cmpstr(j_configuration_get_object_backend(configuration), ==, "null");
-	g_assert_cmpstr(j_configuration_get_object_component(configuration), ==, "server");
-	g_assert_cmpstr(j_configuration_get_object_path(configuration), ==, "NULL");
+	g_assert_cmpuint(j_configuration_get_object_tier_count(configuration), ==, 1);
+	g_assert_cmpuint(j_configuration_get_kv_tier_count(configuration), ==, 2);
 
-	g_assert_cmpstr(j_configuration_get_kv_backend(configuration), ==, "null2");
-	g_assert_cmpstr(j_configuration_get_kv_component(configuration), ==, "client");
-	g_assert_cmpstr(j_configuration_get_kv_path(configuration), ==, "NULL2");
+	g_assert_cmpstr(j_configuration_get_object_backend(configuration, 0), ==, "null");
+	g_assert_cmpstr(j_configuration_get_object_component(configuration, 0), ==, "server");
+	g_assert_cmpstr(j_configuration_get_object_path(configuration, 0), ==, "NULL");
 
-	g_assert_cmpstr(j_configuration_get_db_backend(configuration), ==, "null3");
+	g_assert_cmpstr(j_configuration_get_kv_backend(configuration, 0), ==, "null2");
+	g_assert_cmpstr(j_configuration_get_kv_component(configuration, 0), ==, "client");
+	g_assert_cmpstr(j_configuration_get_kv_path(configuration, 0), ==, "NULL2");
+
+	g_assert_cmpstr(j_configuration_get_kv_backend(configuration, 1), ==, "null3");
+	g_assert_cmpstr(j_configuration_get_kv_component(configuration, 1), ==, "server");
+	g_assert_cmpstr(j_configuration_get_kv_path(configuration, 1), ==, "NULL3");
+
+	g_assert_cmpstr(j_configuration_get_db_backend(configuration), ==, "null4");
 	g_assert_cmpstr(j_configuration_get_db_component(configuration), ==, "client");
-	g_assert_cmpstr(j_configuration_get_db_path(configuration), ==, "NULL3");
+	g_assert_cmpstr(j_configuration_get_db_path(configuration), ==, "NULL4");
 
 	j_configuration_unref(configuration);
 

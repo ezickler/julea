@@ -51,13 +51,16 @@ guint32 j_configuration_get_object_server_count (JConfiguration*);
 guint32 j_configuration_get_kv_server_count (JConfiguration*);
 guint32 j_configuration_get_db_server_count (JConfiguration*);
 
-gchar const* j_configuration_get_object_backend (JConfiguration*);
-gchar const* j_configuration_get_object_component (JConfiguration*);
-gchar const* j_configuration_get_object_path (JConfiguration*);
+guint32 j_configuration_get_object_tier_count (JConfiguration* configuration);
+guint32 j_configuration_get_kv_tier_count (JConfiguration* configuration);
 
-gchar const* j_configuration_get_kv_backend (JConfiguration*);
-gchar const* j_configuration_get_kv_component (JConfiguration*);
-gchar const* j_configuration_get_kv_path (JConfiguration*);
+gchar const* j_configuration_get_object_backend (JConfiguration*, gint32);
+gchar const* j_configuration_get_object_component (JConfiguration*, gint32);
+gchar const* j_configuration_get_object_path (JConfiguration*, gint32);
+
+gchar const* j_configuration_get_kv_backend (JConfiguration*, gint32);
+gchar const* j_configuration_get_kv_component (JConfiguration*, gint32);
+gchar const* j_configuration_get_kv_path (JConfiguration*, gint32);
 
 gchar const* j_configuration_get_db_backend (JConfiguration*);
 gchar const* j_configuration_get_db_component (JConfiguration*);

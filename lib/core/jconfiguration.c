@@ -39,6 +39,14 @@
  */
 struct JConfiguration
 {
+	/**
+	 * The servers.
+	 * The oder of ther server determines the order in case of distributed data
+	 * objects.
+	 * KV and Object are hash by key/name and distibuted via modul among all
+	 * servers. So changing order is also affecting which server holds wich
+	 * data.
+	 */
 	struct
 	{
 		/**
@@ -74,48 +82,70 @@ struct JConfiguration
 	servers;
 
 	/**
-	 * The object configuration.
+	 * The backends.
+	 * An array for each backend type is held. The order determines the tier
+	 * level. Level 0 is the fastes so they should be ordered decresing by
+	 * performance.
 	 */
 	struct
 	{
 		/**
-		 * The backend.
+		 * A object tier configuration.
 		 */
-		gchar* backend;
+		struct Object_backends
+		{
+			/**
+			 * The backend.
+			 */
+			gchar* backend;
+
+			/**
+			 * The component.
+			 */
+			gchar* component;
+
+			/**
+			 * The path.
+			 */
+			gchar* path;
+
+
+		}
+		* object;
 
 		/**
-		 * The component.
+		 * A kv tier configuration.
 		 */
-		gchar* component;
+		struct Kv_backends
+		{
+			/**
+			 * The backend.
+			 */
+			gchar* backend;
+
+			/**
+			 * The component.
+			 */
+			gchar* component;
+
+			/**
+			 * The path.
+			 */
+			gchar* path;
+		}
+		* kv;
 
 		/**
-		 * The path.
+		 * The number of object backends/tier levels.
 		 */
-		gchar* path;
+		guint32 object_len;
+
+		/**
+		 * The number of kv backends/tier levels..
+		 */
+		guint32 kv_len;
 	}
-	object;
-
-	/**
-	 * The kv configuration.
-	 */
-	struct
-	{
-		/**
-		 * The backend.
-		 */
-		gchar* backend;
-
-		/**
-		 * The component.
-		 */
-		gchar* component;
-
-		/**
-		 * The path.
-		 */
-		gchar* path;
-	}
-	kv;
+	backends;
 
 	/**
 	 * The db configuration.
@@ -250,12 +280,18 @@ j_configuration_new_for_data (GKeyFile* key_file)
 	gchar** servers_object;
 	gchar** servers_kv;
 	gchar** servers_db;
-	gchar* object_backend;
-	gchar* object_component;
-	gchar* object_path;
-	gchar* kv_backend;
-	gchar* kv_component;
-	gchar* kv_path;
+	gchar** object_backend;
+	guint32 object_backend_length;
+	gchar** object_component;
+	guint32 object_component_length;
+	gchar** object_path;
+	guint32 object_path_length;
+	gchar** kv_backend;
+	guint32 kv_backend_length;
+	gchar** kv_component;
+	guint32 kv_component_length;
+	gchar** kv_path;
+	guint32 kv_path_length;
 	gchar* db_backend;
 	gchar* db_component;
 	gchar* db_path;
@@ -268,15 +304,25 @@ j_configuration_new_for_data (GKeyFile* key_file)
 	max_operation_size = g_key_file_get_uint64(key_file, "core", "max-operation-size", NULL);
 	max_connections = g_key_file_get_integer(key_file, "clients", "max-connections", NULL);
 	stripe_size = g_key_file_get_uint64(key_file, "clients", "stripe-size", NULL);
+
 	servers_object = g_key_file_get_string_list(key_file, "servers", "object", NULL, NULL);
 	servers_kv = g_key_file_get_string_list(key_file, "servers", "kv", NULL, NULL);
 	servers_db = g_key_file_get_string_list(key_file, "servers", "db", NULL, NULL);
-	object_backend = g_key_file_get_string(key_file, "object", "backend", NULL);
-	object_component = g_key_file_get_string(key_file, "object", "component", NULL);
-	object_path = g_key_file_get_string(key_file, "object", "path", NULL);
-	kv_backend = g_key_file_get_string(key_file, "kv", "backend", NULL);
-	kv_component = g_key_file_get_string(key_file, "kv", "component", NULL);
-	kv_path = g_key_file_get_string(key_file, "kv", "path", NULL);
+
+	object_backend = g_key_file_get_string_list(key_file, "object", "backend", NULL, NULL);
+	object_backend_length = g_strv_length(object_backend);
+	object_component = g_key_file_get_string_list(key_file, "object", "component", NULL, NULL);
+	object_component_length = g_strv_length(object_backend);
+	object_path = g_key_file_get_string_list(key_file, "object", "path", NULL, NULL);
+	object_path_length = g_strv_length(object_path);
+
+	kv_backend = g_key_file_get_string_list(key_file, "kv", "backend", NULL, NULL);
+	kv_backend_length = g_strv_length(kv_backend);
+	kv_component = g_key_file_get_string_list(key_file, "kv", "component", NULL, NULL);
+	kv_component_length = g_strv_length(kv_component);
+	kv_path = g_key_file_get_string_list(key_file, "kv", "path", NULL, NULL);
+	kv_path_length = g_strv_length(kv_path);
+
 	db_backend = g_key_file_get_string(key_file, "db", "backend", NULL);
 	db_component = g_key_file_get_string(key_file, "db", "component", NULL);
 	db_path = g_key_file_get_string(key_file, "db", "path", NULL);
@@ -290,9 +336,13 @@ j_configuration_new_for_data (GKeyFile* key_file)
 	    || kv_backend == NULL
 	    || kv_component == NULL
 	    || kv_path == NULL
-	    || db_backend == NULL
-	    || db_component == NULL
-	    || db_path == NULL)
+		|| db_backend == NULL
+		|| db_component == NULL
+		|| db_path == NULL
+		|| ((object_backend_length != object_component_length) &&
+		 	(object_component_length != object_path_length))
+		|| ((kv_backend_length != kv_component_length) &&
+			(kv_component_length != kv_path_length)))
 	{
 		g_free(db_backend);
 		g_free(db_component);
@@ -311,18 +361,28 @@ j_configuration_new_for_data (GKeyFile* key_file)
 	}
 
 	configuration = g_slice_new(JConfiguration);
+
+	configuration->backends.kv = g_new( struct Kv_backends, kv_backend_length );
+	configuration->backends.object = g_new( struct Object_backends, object_backend_length );
+
 	configuration->servers.object = servers_object;
 	configuration->servers.kv = servers_kv;
 	configuration->servers.db = servers_db;
 	configuration->servers.object_len = g_strv_length(servers_object);
 	configuration->servers.kv_len = g_strv_length(servers_kv);
 	configuration->servers.db_len = g_strv_length(servers_db);
-	configuration->object.backend = object_backend;
-	configuration->object.component = object_component;
-	configuration->object.path = object_path;
-	configuration->kv.backend = kv_backend;
-	configuration->kv.component = kv_component;
-	configuration->kv.path = kv_path;
+	configuration->backends.object_len = object_backend_length;
+	for (size_t i = 0; i < object_backend_length; i++) {
+		configuration->backends.object[i].backend = object_backend[i];
+		configuration->backends.object[i].component = object_component[i];
+		configuration->backends.object[i].path = object_path[i];
+	}
+	configuration->backends.kv_len = kv_backend_length;
+	for (size_t i = 0; i < kv_backend_length; i++) {
+		configuration->backends.kv[i].component = kv_component[i];
+		configuration->backends.kv[i].path = kv_path[i];
+		configuration->backends.kv[i].backend = kv_backend[i];
+	}
 	configuration->db.backend = db_backend;
 	configuration->db.component = db_component;
 	configuration->db.path = db_path;
@@ -386,17 +446,23 @@ j_configuration_unref (JConfiguration* configuration)
 {
 	if (g_atomic_int_dec_and_test(&(configuration->ref_count)))
 	{
+		for (size_t i = 0; i < configuration->backends.kv_len; i++) {
+			g_free(configuration->backends.kv[i].backend);
+			g_free(configuration->backends.kv[i].component);
+			g_free(configuration->backends.kv[i].path);
+		}
+		g_free(configuration->backends.kv);
+
+		for (size_t i = 0; i < configuration->backends.object_len; i++) {
+			g_free(configuration->backends.object[i].backend);
+			g_free(configuration->backends.object[i].component);
+			g_free(configuration->backends.object[i].path);
+		}
+		g_free(configuration->backends.object);
+
 		g_free(configuration->db.backend);
 		g_free(configuration->db.component);
 		g_free(configuration->db.path);
-
-		g_free(configuration->kv.backend);
-		g_free(configuration->kv.component);
-		g_free(configuration->kv.path);
-
-		g_free(configuration->object.backend);
-		g_free(configuration->object.component);
-		g_free(configuration->object.path);
 
 		g_strfreev(configuration->servers.object);
 		g_strfreev(configuration->servers.kv);
@@ -450,6 +516,7 @@ j_configuration_get_kv_server_count (JConfiguration* configuration)
 }
 
 guint32
+
 j_configuration_get_db_server_count (JConfiguration* configuration)
 {
 	g_return_val_if_fail(configuration != NULL, 0);
@@ -457,52 +524,70 @@ j_configuration_get_db_server_count (JConfiguration* configuration)
 	return configuration->servers.db_len;
 }
 
+guint32
+j_configuration_get_object_tier_count (JConfiguration* configuration)
+{
+	g_return_val_if_fail(configuration != NULL, 0);
+
+	return configuration->backends.object_len;
+}
+
+guint32
+j_configuration_get_kv_tier_count (JConfiguration* configuration)
+{
+	g_return_val_if_fail(configuration != NULL, 0);
+
+	return configuration->backends.kv_len;
+}
+
+
+
 gchar const*
-j_configuration_get_object_backend (JConfiguration* configuration)
+j_configuration_get_object_backend (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->object.backend;
+	return configuration->backends.object[tier].backend;
 }
 
 gchar const*
-j_configuration_get_object_component (JConfiguration* configuration)
+j_configuration_get_object_component (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->object.component;
+	return configuration->backends.object[tier].component;
 }
 
 gchar const*
-j_configuration_get_object_path (JConfiguration* configuration)
+j_configuration_get_object_path (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->object.path;
+	return configuration->backends.object[tier].path;
 }
 
 gchar const*
-j_configuration_get_kv_backend (JConfiguration* configuration)
+j_configuration_get_kv_backend (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->kv.backend;
+	return configuration->backends.kv[tier].backend;
 }
 
 gchar const*
-j_configuration_get_kv_component (JConfiguration* configuration)
+j_configuration_get_kv_component (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->kv.component;
+	return configuration->backends.kv[tier].component;
 }
 
 gchar const*
-j_configuration_get_kv_path (JConfiguration* configuration)
+j_configuration_get_kv_path (JConfiguration* configuration, gint32 tier)
 {
 	g_return_val_if_fail(configuration != NULL, NULL);
 
-	return configuration->kv.path;
+	return configuration->backends.kv[tier].path;
 }
 
 gchar const*

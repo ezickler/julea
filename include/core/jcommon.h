@@ -47,11 +47,19 @@ G_BEGIN_DECLS
 void __attribute__((constructor)) j_init (void);
 void __attribute__((destructor)) j_fini (void);
 
+void j_init_server (gint);
+void j_fini_server (void);
+
 JConfiguration* j_configuration (void);
 
 JBackend* j_object_backend (void);
 JBackend* j_kv_backend (void);
 JBackend* j_db_backend (void);
+
+// JBackend* j_object_backend_hsm (JHsmHints hsmHints);
+// JBackend* j_kv_backend_hsm (JHsmHints hsmHints);
+JBackend* j_object_backend_tier (guint32 tier);
+JBackend* j_kv_backend_tier (guint32 tier);
 
 G_END_DECLS
 
